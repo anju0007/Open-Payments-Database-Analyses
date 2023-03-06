@@ -1,0 +1,676 @@
+clear
+*******************************************************************************
+**Import dataset after manual data validation
+cd "G:\マイドライブ\OPD_data out put\Endocrinology, Diabetes & Metabolism\profile/"
+import delimited using ///
+"npi_dataset_payment2013-2021.csv",clear
+
+describe
+drop providerotherorganizationnametyp providerotherorganizationname ///
+authorizedofficialtitleorpositio  index
+
+rename providergendercode gender
+
+drop if cmonth >163
+
+**Physician practice states
+tab v14
+//rename variable concerning physician practicing state
+rename v14 state
+
+//Categorize the states by region
+//Midwest
+gen region = 0 if state == "ND" | state == "SD"| state == "NE" | ///
+state == "KS" | state == "MN"| state == "IA" | ///
+state == "WI" | state == "IL"| state == "MO" | ///
+state == "MI" | state == "IN"| state == "OH" 
+
+//West
+replace region = 1 if state == "MT" | state == "WY" | ///
+state == "ID" | state == "NV"| state == "AZ" | ///
+state == "NM" | state == "CO"| state == "UT" | ///
+state == "WA" | state == "OR"| state == "CA" | ///
+state == "HI" |state == "AK"
+
+//South
+replace region = 2 if state == "OK" | state == "TX"| state == "LA" | ///
+state == "AR" | state == "MS"| state == "AL" | ///
+state == "TN" | state == "FL"| state == "GA" | ///
+state == "SC" | state == "KY"| state == "WV" | ///
+state == "VA" | state == "NC"| state == "MD" | ///
+state == "DE" | state == "DC"
+
+///Northeast
+replace region = 3 if state == "PA" | state == "NJ"| state == "NY" | ///
+state == "CT" | state == "RI"| state == "MA" | ///
+state == "VT" | state == "NH"| state == "ME" 
+
+//US territories
+replace region = 4 if state == "MP" | state == "PR" |state == "MR" | ///
+state == "AA" | state == "AE" | state == "VI" | state == "GU"
+
+//Foreign countries
+replace region = 5 if state == "BE" |  state == "PUNJAB" | /// 
+state == "NL" | state == "DUBAI" | state == "DELHI" | ///
+state == "KINGSTON" | region == .
+
+label define region 0 "Midwest" 1 "West" 2 "South" ///
+3 "Northeast" 4 "US territories" 5 "Foreign"
+label values region region
+
+//confirm state and region
+tab state region, missing
+
+
+***Categorizing by divisions
+**New England
+gen division = 0 if state == "CT" | state == "RI"| state == "MA" | ///
+state == "VT" | state == "NH"| state == "ME" 
+**Middle Atlantic
+replace division = 1 if state == "PA" | state == "NJ"| state == "NY" 
+**South Atlantic
+replace division = 2 if state == "FL"| state == "GA" | ///
+state == "SC" | state == "WV" | ///
+state == "VA" | state == "NC"| state == "MD" | ///
+state == "DE" | state == "DC"
+
+**West South Central
+replace division = 4 if ///
+state == "OK" | state == "TX"| state == "LA" | ///
+state == "AR" 
+
+**East South Central
+replace division = 3 ///
+if state == "MS"| state == "AL" | ///
+state == "TN" | state == "KY"
+
+**East North Central
+replace division = 5 if ///
+state == "WI" | state == "IL"|  ///
+state == "MI" | state == "IN"| state == "OH" 
+
+**West North Central
+replace division = 6 ///
+if state == "ND" | state == "SD"| state == "NE" | ///
+state == "KS" | state == "MN"| state == "IA" | state == "MO"
+
+**Mountain
+replace division = 7 if ///
+state == "MT" | state == "WY" | ///
+state == "ID" | state == "NV"| state == "AZ" | ///
+state == "NM" | state == "CO"| state == "UT"
+
+**Pacific
+replace division = 8 if state == "WA" | state == "OR"| ///
+state == "CA"| state == "HI" |state == "AK"
+
+**US territories
+replace division = 9 if region == 4
+replace division = 10 if region == 5 | region == .
+
+tab state division , missing
+
+label define division 0 "New England" 1 "Middle Atlantic" 2 "South Atlantic" ///
+3 "East South Central" 4 "West South Central" 5 "East North Central" ///
+6 "West North Central" 7 "Mountain" 8 "Pacific" 9 "US territories" ///
+10 "Foreign"
+label values division division
+
+tab division, missing
+
+**Physician sex
+tab gender, missing
+gen gender2 = 0 if gender == "M"
+replace gender2 = 1 if gender == "F"
+label define gender2 0 "Male" 1 "Female"
+label values gender2 gender2
+
+**Generate variable concerning year of NPPES activation
+gen yeare = 2022 - year
+
+** generate variable for sum of general payments and research payments
+gen totalg= general2013 + general2014 + general2015 + general2016 +  ///
+general2017 + general2018 + general2019 + general2020 + general2021 
+
+gen totalr = research2013 + research2014 + research2015 + research2016 + ///
+research2017 + research2018 + research2019 + research2020 + research2021 
+
+gen totalrd = researchd2013 + researchd2014 + researchd2015 + researchd2016 + ///
+researchd2017 + researchd2018 + researchd2019 + researchd2020 + researchd2021 
+
+gen totalo = ownership2013 + ownership2014 + ownership2015 + ownership2016 + ///
+ownership2017 + ownership2018 + ownership2019 + ownership2020 + ownership2021 
+
+//Count of general payment contracts per physician
+gen totalgc = generalc2013 + generalc2014 + generalc2015 + generalc2016 +  ///
+generalc2017 + generalc2018 + generalc2019 + generalc2020 + generalc2021 
+
+
+**Generate dummy variable for the payment reciept
+gen anyg = 1 if totalg>0
+replace anyg= 0 if totalg==0
+
+gen anyr = 1 if totalr >0
+replace anyr = 0 if totalr==0
+
+gen anyrd = 1 if totalrd >0
+replace anyrd = 0 if totalrd == 0
+
+gen anyo = 0 if totalo == 0
+replace anyo = 1 if totalo > 0
+
+//Generate variable of total combined payments over nine years
+gen total = totalg +totalr + totalrd
+//Generate dummy variable of receipt of any payments over nine years
+gen any = 1 if total >0
+replace any = 0 if total == 0
+
+
+**Descriptive analysis
+//total payments
+tabstat total, by(any) stat(q mean sd) format(%15.0fc)
+tabstat total, by(any) ///
+stat(mean sd q max min sum) format(%18.2fc) 
+
+tab any //Acceptance of industry payments
+inequal7 total  //Gini Index
+
+//Sum of each payments over nine years
+tabstat total totalg totalr totalrd, stat(sum) format(%15.0fc)
+
+//General payments
+tab anyg
+tabstat totalg, by(anyg) ///
+stat(mean sd q max min sum) format(%15.2fc)
+inequal7 totalg 
+
+gsort -totalg
+gen id=_n
+
+tabstat totalg if id<101, stat(q mean sd) format(%12.0fc)
+
+//Associated research payments
+tab anyr
+tabstat totalr, by(anyr) stat(mean sd q max min sum) format(%15.2fc)
+inequal7 totalr
+
+//Direct research payments
+tab anyrd
+tabstat totalrd, by(anyrd) ///
+stat(mean sd q max min sum) format(%15.2fc)
+inequal7 totalrd
+
+//Ownership interests (not use in this study)
+tab anyo
+tabstat totalo, by(anyo) ///
+stat(mean sd q max min sum) format(%13.2fc)
+
+//Number of physicians by payment amounts (general)
+rename totalg general 
+gen group = 0 if general ==0
+replace group = 1 if general > 0 & general <= 50
+replace group = 2 if general > 50 & general <= 100
+replace group = 3 if general > 100 & general <= 500
+replace group = 4 if general > 500 & general <= 1000
+replace group = 5 if general > 1000 & general<= 5000
+replace group = 6 if general > 5000 & general <= 10000
+replace group = 7 if general > 10000 & general <= 50000
+replace group = 8 if general > 50000 & general <= 100000
+replace group = 9 if general > 100000 & general <= 500000
+replace group = 10 if general > 500000 
+
+tab group
+drop group 
+rename general totalg
+
+//Number of physicians by payment amounts (associated research payments)
+rename totalr research
+gen gr = 0 if research == 0
+replace gr = 1 if research >0 & research <= 1000
+replace gr = 2 if research >1000 & research <= 5000
+replace gr = 3 if research >5000 & research <= 10000
+replace gr = 4 if research >10000 & research <= 50000
+replace gr = 5 if research >50000 & research <= 100000
+replace gr = 6 if research >100000 & research <= 500000
+replace gr = 7 if research >500000 & research <= 1000000
+replace gr = 8 if research >1000000 
+
+tab gr
+drop gr
+rename research totalr 
+
+//Reciept of general payments by acceptance of research payments
+gen any_research = 1 if anyr == 1 | anyrd == 1
+replace any_research = 0 if any_research ==.
+tab any_research anyg, row
+
+tab anyg anyr, col
+tabstat totalg if totalg > 0, by(anyr) ///
+stat(q mean sd) format(%10.2fc)
+
+**Analysis of payments by region
+//statistics by region
+tab region 
+tab region anyg, row 
+tab region anyr, row
+
+tabstat totalg if anyg == 1, by(region) ///
+stat(q mean sd ) format(%13.2fc)
+
+tabstat totalr if anyr == 1, by(region) ///
+stat(q mean sd) format(%13.2fc)
+
+//by division
+tab division
+tab division anyg, row chi
+tab division anyr, row chi
+
+tabstat totalg if anyg == 1, by(division) ///
+stat(q mean sd) format(%13.2fc)
+
+tabstat totalr if anyr == 1, by(division) ///
+stat(q mean sd) format(%13.2fc)
+
+
+**by state
+tabstat totalg if anyg == 1 & region <4, by(state) ///
+stat(mean p50) format(%13.2fc)
+
+tabstat totalr if anyr == 1 & region <4, by(state) ///
+stat(mean p50) format(%13.2fc)
+kwallis totalr, by(division)
+
+
+//Lorenz Curve
+lorenz estimate totalg totalrd totalr, ///
+nquantiles(100) percent gini 
+
+//make Lorenz graph
+lorenz estimate total if total >0 ///
+, nquantiles(100) percent 
+
+lorenz graph, nodiagonal  ///
+recast(connect) msymbol(diamond) ///
+legend(off) ///
+ytitle("Cumulative percentage" "of total payments (%)", ///
+size (medium)  color(black)) ///
+xtitle("Percentage of endocrinologists (%)", ///
+size(medlarge)) ///
+xlabel(0(20)100, grid glpattern(solid) labsize(medium)) ///
+xmlabel(0(10)100, grid glpattern(shortdash) nolabel) ///
+ylabel(0(20)100, grid glpattern(solid) labsize(medium) ) ///
+ymlabel(0(10)100, grid glpattern(shortdash) nolabel) ///
+graphregion(fcolor(white) lcolor(white)) ///
+plotregion(fcolor(white) lcolor(white)) ///
+xsize(16) ysize(9) scheme(s2mono) saving(g1, replace)
+
+
+//general
+lorenz estimate totalg ///
+, nquantiles(100) percent 
+
+lorenz graph, nodiagonal  ///
+recast(connect) msymbol(diamond) ///
+legend(off) noci ///
+ytitle("Cumulative percentage of general payments (%)", ///
+size (medium)  color(black)) ///
+xtitle("Percentage of endocrinologists (%)", ///
+size(medlarge)) ///
+xlabel(0(20)100, grid glpattern(solid) labsize(medium)) ///
+xmlabel(0(10)100, grid glpattern(shortdash) nolabel) ///
+ylabel(0(20)100, grid glpattern(solid) labsize(medium) ) ///
+ymlabel(0(10)100, grid glpattern(shortdash) nolabel) ///
+graphregion(fcolor(white) lcolor(white)) ///
+plotregion(fcolor(white) lcolor(white)) ///
+xsize(16) ysize(9) scheme(s2mono) saving(g2, replace)
+
+//direct research payments
+lorenz estimate totalrd  if totalrd >0 ///
+, nquantiles(100) percent 
+
+lorenz graph, nodiagonal  ///
+recast(connect) msymbol(diamond) ///
+legend(off) ///
+ytitle("Cumulative percentage of" "direct research payments (%)", ///
+size (medium)  color(black)) ///
+xtitle("Percentage of diabetologist/endocrinologists (%)", ///
+size(medlarge)) ///
+xlabel(0(20)100, grid glpattern(solid) labsize(medium)) ///
+xmlabel(0(10)100, grid glpattern(shortdash) nolabel) ///
+ylabel(0(20)100, grid glpattern(solid) labsize(medium) ) ///
+ymlabel(0(10)100, grid glpattern(shortdash) nolabel) ///
+graphregion(fcolor(white) lcolor(white)) ///
+plotregion(fcolor(white) lcolor(white)) ///
+xsize(16) ysize(9) scheme(s2mono) saving(g3, replace)
+
+
+//associated research payments
+lorenz estimate totalr if totalr >0 ///
+, nquantiles(100) percent 
+
+lorenz graph, nodiagonal  ///
+recast(connect) msymbol(diamond) ///
+legend(off) ///
+ytitle("Cumulative percentage of" "associated research payments (%)", ///
+size (medium)  color(black)) ///
+xtitle("Percentage of diabetologist/endocrinologists (%)", ///
+size(medlarge)) ///
+xlabel(0(20)100, grid glpattern(solid) labsize(medium)) ///
+xmlabel(0(10)100, grid glpattern(shortdash) nolabel) ///
+ylabel(0(20)100, grid glpattern(solid) labsize(medium) ) ///
+ymlabel(0(10)100, grid glpattern(shortdash) nolabel) ///
+graphregion(fcolor(white) lcolor(white)) ///
+plotregion(fcolor(white) lcolor(white)) ///
+xsize(16) ysize(9) scheme(s2mono) saving(g4, replace)
+
+
+
+*****************************************************
+//yearly trend analyses
+reshape long general research researchd generall generalc ///
+noncme_speaking cme_speaking consulting education ///
+honoraria  meal gift travel other royalty c_ownership ///
+acquisitions device_loan ownership, i(npi) j(yr) 
+
+
+drop anyr anyg anyrd
+
+
+//Analysis of payments by year and trend analysis
+**# Bookmark #2
+sort general
+
+foreach x of varlist ///
+general research researchd generall generalc ///
+noncme_speaking cme_speaking consulting education ///
+honoraria  meal gift travel other royalty c_ownership ///
+acquisitions device_loan ownership {
+replace `x' = 0 if `x' ==.
+}
+
+drop year
+rename yr year
+  
+gen anyg= 0 if general ==0
+replace anyg = 1 if general >0
+gen anyr = 0 if research ==0
+replace anyr = 1 if research >0
+gen anyrd = 0 if researchd ==0
+replace anyrd = 1 if researchd >0
+
+tabstat general generall ///
+research researchd generalc , by(year) ///
+stat(sum) format(%15.0fc)
+
+//general payments
+tabstat general if anyg == 1, by(year) ///
+stat(q mean sd max min) format(%14.0fc)
+tabstat general, stat(sum) format(%12.0fc)
+
+
+tabstat general if id<101, ///
+stat(q mean sd) format(%12.0fc)
+
+tabstat noncme_speaking cme_speaking consulting education ///
+honoraria  meal gift travel other royalty c_ownership ///
+acquisitions device_loan if id<101, stat(sum) format(%12.0fc)
+
+
+
+
+//make payment group 
+gen group = 0 if general ==0
+replace group = 1 if general > 0 & general <= 50
+replace group = 2 if general > 50 & general <= 100
+replace group = 3 if general > 100 & general <= 500
+replace group = 4 if general > 500 & general <= 1000
+replace group = 5 if general > 1000 & general<= 5000
+replace group = 6 if general > 5000 & general <= 10000
+replace group = 7 if general > 10000 & general <= 50000
+replace group = 8 if general > 50000 & general <= 100000
+replace group = 9 if general > 100000 & general <= 500000
+replace group = 10 if general > 500000 & general <= 1000000
+replace group = 11 if general> 1000000
+
+tab group year, col
+
+inequal7 general if year == 2013 
+inequal7 general if year == 2014 
+inequal7 general if year == 2015 
+inequal7 general if year == 2016 
+inequal7 general if year == 2017 
+inequal7 general if year == 2018 
+inequal7 general if year == 2019 
+inequal7 general if year == 2020 
+inequal7 general if year == 2021 
+lorenz estimate general, percent over(year) gini
+
+
+//General payments
+tabstat general if anyg == 1, by(year) ///
+stat(q mean sd max min) format(%14.2fc)
+tab anyg year, col
+
+tabstat general if general >0, stat(q mean sd) ///
+format(%10.0fc) 
+
+//Direct research payments
+tabstat researchd if anyrd == 1, by(year) ///
+stat(q mean sd max min) format(%14.0fc)
+tab year anyrd, row chi
+lorenz estimate researchd, percent over(year) gini
+
+tabstat researchd if researchd >0, stat(q mean sd) ///
+format(%10.0fc) 
+
+//Associated research payments
+tabstat research if anyr == 1, by(year) ///
+stat(q mean sd max min) format(%14.0fc)
+tab year anyr, row chi
+lorenz estimate research, percent over(year) gini
+tabstat research if research >0, stat(q mean sd) ///
+format(%10.0fc) 
+
+tabstat research researchd, by(year) ///
+stat(sum) format(%16.0fc)
+
+
+
+//research group
+gen gr = 0 if research == 0
+replace gr = 1 if research >0 & research <= 1000
+replace gr = 2 if research >1000 & research <= 5000
+replace gr = 3 if research >5000 & research <= 10000
+replace gr = 4 if research >10000 & research <= 50000
+replace gr = 5 if research >50000 & research <= 100000
+replace gr = 6 if research >100000 & research <= 500000
+replace gr = 7 if research >500000 & research <= 1000000
+replace gr = 8 if research >1000000 
+
+tab gr year, col chi
+
+//yearly trend analysis
+xtset npi year,yearly
+//Generate dummy variable before and during COVID-19 period (level change variable)
+gen covid= 1 if year >2019
+replace covid = 0 if year <= 2019
+//Generate variable concerning year since the COVID-19 pandemic (post slope variable)
+gen since = year -2019 if year >2019
+replace since = 0 if year <= 2019
+
+count if research == 0
+
+********************Adjust inflation rate***************************************
+//trend in payments per physician
+rename general generalr
+rename research researchr
+rename researchd researchdr
+rename generall generallr
+rename generalc generalcr
+rename noncme_speaking noncme_speakingr
+rename cme_speaking cme_speakingr
+rename consulting consultingr
+rename education educationr
+rename honoraria honorariar
+rename meal mealr
+rename gift giftr
+rename travel travelr
+rename other otherr
+rename royalty royaltyr
+rename c_ownership c_ownershipr
+rename acquisitions acquisitionsr
+rename device_loan device_loanr
+rename ownership ownershipr
+
+**2014 CPI was set as a baseline value
+foreach v in general research researchd generall generalc ///
+noncme_speaking cme_speaking consulting education ///
+honoraria  meal gift travel other royalty c_ownership ///
+acquisitions device_loan ownership {
+gen `v' = `v'r / 0.98403707082995 if year == 2013
+replace `v' = `v'r / 1 if year == 2014
+replace `v' = `v'r / 1.00118697620979 if year == 2015
+replace `v' = `v'r / 1.01381707894025 if year == 2016
+replace `v' = `v'r / 1.03541497702082 if year == 2017
+replace `v' = `v'r / 1.06070475128413 if year == 2018
+replace `v' = `v'r / 1.07992447283049 if year == 2019
+replace `v' = `v'r / 1.09324733035956 if year == 2020
+replace `v' = `v'r / 1.14460834009192 if year == 2021
+}
+
+********************************************************************************
+foreach v in general research researchd generall generalc ///
+noncme_speaking cme_speaking consulting education ///
+honoraria  meal gift travel other royalty c_ownership ///
+acquisitions device_loan ownership {
+gen any`v' = 1 if `v' >0
+replace any`v' = 0 if `v' == 0
+}
+
+foreach v in general research researchd generall generalc ///
+noncme_speaking cme_speaking honoraria ///
+consulting education ///
+meal gift travel other  {
+	egen total`v' = total(`v'), by(npi)
+}
+
+
+//round down associated research payments
+gen research_r = round(research/10000)
+hist research_r
+
+//histgram of general payments per physician 
+hist generall
+
+
+// ITS trend analysis with GEE model
+xtnbreg general year since i.covid ///
+if year != 2013, nolog ///
+pa vce(robust) ///
+pformat(%12.10g) cformat(%7.5f)
+
+
+//ITS analyses of per-physician payments using negative binomial GEE regression
+**All general payments
+***model 1 including all registered physicians 
+xtnbreg general year since i.covid ///
+if year != 2013, nolog ///
+pa vce(robust) irr cformat(%7.5f)
+
+***model 2 excluding physicians without any general payments
+xtnbreg general year since i.covid ///
+if year != 2013 & anygenerall > 0, nolog ///
+pa vce(robust) irr cformat(%7.5f)
+
+**Sensitivity analysis using general payments other than ownership interests, royalties etc...
+***model 1 including all registered physicians (final model for sensitivity analysis) 
+xtnbreg generall year since i.covid ///
+if year != 2013, nolog ///
+pa vce(robust) irr ///
+pformat(%12.10g) cformat(%7.5f)
+
+***model 2 excluding physicians without any general payments
+xtnbreg generall year since i.covid ///
+if year != 2013 & anygenerall > 0, nolog ///
+pa vce(robust) irr ///
+pformat(%12.10g) cformat(%7.5f)
+
+//Reciept of general payments
+xtgee anygeneral year since i.covid ///
+if year != 2013, ///
+family(poisson) link(log) ///
+nolog vce(robust) eform
+
+**Sensitivity analysis using general payments other than ownership interests, royalties etc.
+//GEE by limited payment category
+gen anygl = 1 if generall >0
+replace anygl = 0 if generall ==0
+
+xtgee anygl year since i.covid ///
+if year != 2013, ///
+family(poisson) link(log) ///
+nolog vce(robust) eform
+
+
+//associated research payments
+***ITS GEE model
+xtnbreg research_r year since i.covid ///
+if year != 2013 , ///
+pa vce(robust) irr ///
+pformat(%12.10g) cformat(%7.5f)
+
+xtnbreg research year since i.covid ///
+if year != 2013 , ///
+pa vce(robust) irr ///
+pformat(%12.10g) cformat(%7.5f)
+
+
+***GEE model (year was handled as a continuous variable)
+xtnbreg research_r year  ///
+if year != 2013 , ///
+pa vce(robust) irr ///
+pformat(%12.10g) cformat(%7.5f)
+
+***receipt of associated research payments
+xtgee anyr year since i.covid ///
+if year != 2013, ///
+family(poisson) link(log) ///
+vce(robust) eform
+
+
+//direct research payments 
+***ITS GEE model
+xtnbreg researchd year since i.covid ///
+if year != 2013 , ///
+pa vce(robust) irr ///
+pformat(%12.10g) cformat(%7.5f)
+
+***GEE model (year as a continuous variable)
+xtnbreg researchd year  ///
+if year != 2013 , ///
+pa vce(robust) irr  cformat(%7.5f)
+
+***receipt of direct research payments
+xtgee anyrd year since i.covid ///
+if year != 2013, ///
+family(poisson) link(log) vce(robust) eform
+
+
+//Analysis by payment amounts
+gen groupo = 0 if totalgenerall ==0
+replace groupo = 1 if totalgenerall > 0 & totalgenerall <= 500
+replace groupo = 2 if totalgenerall > 500 & totalgenerall <= 1000
+replace groupo = 3 if totalgenerall > 1000 & totalgenerall <= 10000
+replace groupo = 4 if totalgenerall > 10000 & totalgenerall <= 100000
+replace groupo = 5 if totalgenerall > 100000 & totalgenerall <= 500000
+replace groupo = 6 if totalgenerall > 500000
+rename groupo group2
+tab group2
+
+//Trend in payments by payment group
+foreach n of numlist 1/6 {
+xtnbreg generall year since i.covid ///
+if year != 2013 & group2 == `n', ///
+pa vce(robust) irr ///
+pformat(%12.10g) cformat(%7.5f)
+}
