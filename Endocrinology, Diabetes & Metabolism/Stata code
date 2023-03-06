@@ -1,7 +1,7 @@
 clear
 *******************************************************************************
 **Import dataset after manual data validation
-cd "G:\マイドライブ\OPD_data out put\Endocrinology, Diabetes & Metabolism\profile/"
+cd "path for dataset"
 import delimited using ///
 "npi_dataset_payment2013-2021.csv",clear
 
